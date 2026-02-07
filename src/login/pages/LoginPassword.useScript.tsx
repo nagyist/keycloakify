@@ -13,13 +13,14 @@ type KcContextLike = {
     userVerification: KcContext.WebauthnAuthenticate["userVerification"];
     rpId: string;
     createTimeout: number | string;
+    enableWebAuthnConditionalUI?: boolean;
 };
 
 assert<keyof KcContextLike extends keyof KcContext.LoginPassword ? true : false>();
 assert<KcContext.LoginPassword extends KcContextLike ? true : false>();
 
 type I18nLike = {
-    msgStr: (key: "webauthn-unsupported-browser-text") => string;
+    msgStr: (key: "webauthn-unsupported-browser-text" | "passkey-unsupported-browser-text") => string;
     isFetchingTranslations: boolean;
 };
 
@@ -38,17 +39,25 @@ export function useScript(params: { webAuthnButtonId: string; kcContext: KcConte
                 textContent: () => `
 
                     import { authenticateByWebAuthn } from "${url.resourcesPath}/js/webauthnAuthenticate.js";
+                    import { initAuthenticate } from "${url.resourcesPath}/js/passkeysConditionalAuth.js";
                     const authButton = document.getElementById('${webAuthnButtonId}');
-                    authButton.addEventListener("click", function() {
-                        const input = {
-                            isUserIdentified : ${isUserIdentified},
-                            challenge : '${challenge}',
-                            userVerification : '${userVerification}',
-                            rpId : '${rpId}',
-                            createTimeout : ${createTimeout},
+                    const input = {
+                        isUserIdentified : ${isUserIdentified},
+                        challenge : ${JSON.stringify(challenge)},
+                        userVerification : ${JSON.stringify(userVerification)},
+                        rpId : ${JSON.stringify(rpId)},
+                        createTimeout : ${createTimeout}
+                    };
+                    authButton.addEventListener("click", () => {
+                        authenticateByWebAuthn({
+                            ...input,
                             errmsg : ${JSON.stringify(msgStr("webauthn-unsupported-browser-text"))}
-                        };
-                        authenticateByWebAuthn(input);
+                        });
+                    }, { once: true });
+
+                    initAuthenticate({
+                        ...input,
+                        errmsg : ${JSON.stringify(msgStr("passkey-unsupported-browser-text"))}
                     });
                 `
             }
@@ -56,7 +65,7 @@ export function useScript(params: { webAuthnButtonId: string; kcContext: KcConte
     });
 
     useEffect(() => {
-        if (isFetchingTranslations) {
+        if (isFetchingTranslations || kcContext.enableWebAuthnConditionalUI !== true) {
             return;
         }
 
