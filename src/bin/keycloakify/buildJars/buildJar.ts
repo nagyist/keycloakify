@@ -238,7 +238,7 @@ export async function buildJar(params: {
                     cwd: keycloakifyBuildCacheDirPath,
                     env: {
                         ...process.env,
-                        MAVEN_OPTS: [process.env.MAVEN_OPTS, "-Xmx4096m"]
+                        MAVEN_OPTS: ["-Xmx4096m", process.env.MAVEN_OPTS]
                             .filter(x => !!x)
                             .join(" ")
                     }
